@@ -1,12 +1,12 @@
 //
-//  LabAssignment1.c
-//  MatrixFunctions
+//  vecMatOps.c
+//  LabRec3
 //
-//  Created by Sam Nosenzo on 9/16/17.
+//  Created by Sam Nosenzo on 10/25/17.
 //  Copyright © 2017 Sam Nosenzo. All rights reserved.
 //
 
-#include "LabAssignment1.h"
+#include "vecMatOps.h"
 #include <math.h>
 #include <stdio.h>
 
@@ -53,7 +53,7 @@ void addVectors(vec4* vec1, vec4* vec2, vec4* res) {
     res->y = vec1->y + vec2->y;
     res->z = vec1->z + vec2->z;
     res->w = 1.0;
-//    res->w = vec1->w + vec2->w;
+    //    res->w = vec1->w + vec2->w;
 }
 
 void subVectors(vec4* vec1, vec4* vec2, vec4* res) {
@@ -61,7 +61,7 @@ void subVectors(vec4* vec1, vec4* vec2, vec4* res) {
     res->y = vec1->y - vec2->y;
     res->z = vec1->z - vec2->z;
     res->w = 1.0;
-//    res->w = vec1->w - vec2->w;
+    //    res->w = vec1->w - vec2->w;
 }
 
 
@@ -142,7 +142,7 @@ void minorMatrix(mat4* orig, mat4* minor) {
     v1 = orig->v1;
     v2 = orig->v2;
     v3 = orig->v3;
-
+    
     // Some of them are multipled by -1 because I did them backwards and am too lazy to reverse them.
     //first row minors
     minor->v0.x = (v1.y*v2.z*v3.w + v2.y*v3.z*v1.w + v3.y*v1.z*v2.w - v1.w*v2.z*v3.y - v2.w*v3.z*v1.y - v3.w*v1.z*v2.y);
@@ -161,7 +161,7 @@ void minorMatrix(mat4* orig, mat4* minor) {
     minor->v1.z = (v0.x*v2.y*v3.w + v2.x*v3.y*v0.w + v3.x*v0.y*v2.w - v0.w*v2.y*v3.x - v2.w*v3.y*v0.x - v3.w*v0.y*v2.x);
     minor->v2.z = -1*(v1.x*v0.y*v3.w + v0.x*v3.y*v1.w + v3.x*v1.y*v0.w - v1.w*v0.y*v3.x - v0.w*v3.y*v1.x - v3.w*v1.y*v0.x);
     minor->v3.z = (v1.x*v2.y*v0.w + v2.x*v0.y*v1.w + v0.x*v1.y*v2.w - v1.w*v2.y*v0.x - v2.w*v0.y*v1.x - v0.w*v1.y*v2.x);
-
+    
     //fourth row minors
     minor->v0.w = (v1.x*v2.y*v3.z + v2.x*v3.y*v1.z + v3.x*v1.y*v2.z - v1.z*v2.y*v3.x - v2.z*v3.y*v1.x - v3.z*v1.y*v2.x);
     minor->v1.w = (v0.x*v2.y*v3.z + v2.x*v3.y*v0.z + v3.x*v0.y*v2.z - v0.z*v2.y*v3.x - v2.z*v3.y*v0.x - v3.z*v0.y*v2.x);
@@ -171,7 +171,7 @@ void minorMatrix(mat4* orig, mat4* minor) {
 
 GLfloat determinantMatrix(mat4* m, mat4* minor) {
     GLfloat determinant;
-
+    
     determinant = m->v0.x*minor->v0.x - m->v1.x*minor->v1.x + m->v2.x*minor->v2.x - m->v3.x*minor->v3.x;
     
     return determinant;
@@ -240,4 +240,15 @@ void multMatrixVector(mat4 *m, vec4 *v, vec4 *res){
     res->y = m->v0.y*v->x + m->v1.y*v->y + m->v2.y*v->z + m->v3.y*v->w;
     res->z = m->v0.z*v->x + m->v1.z*v->y + m->v2.z*v->z + m->v3.z*v->w;
     res->w = m->v0.w*v->x + m->v1.w*v->y + m->v2.w*v->z + m->v3.w*v->w;
+}
+
+void getIdentityMatrix(mat4 *res) {
+    vec4 v0, v1, v2, v3;
+    
+    defineVector(1, 0, 0, 0, &v0);
+    defineVector(0, 1, 0, 0, &v1);
+    defineVector(0, 0, 1, 0, &v2);
+    defineVector(0, 0, 0, 1, &v3);
+    
+    defineMatrix(v0, v1, v2, v3, res);
 }

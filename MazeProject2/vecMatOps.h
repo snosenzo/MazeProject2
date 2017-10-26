@@ -1,36 +1,18 @@
 //
-//  LabAssignment1.h
-//  MatrixFunctions
+//  vecMatOps.h
+//  MazeProject2
 //
-//  Created by Sam Nosenzo on 9/16/17.
+//  Created by Sam Nosenzo on 10/25/17.
 //  Copyright © 2017 Sam Nosenzo. All rights reserved.
 //
 
-#ifndef LabAssignment1_h
-#define LabAssignment1_h
+#ifndef vecMatOps_h
+#define vecMatOps_h
 #include <OpenGL/OpenGL.h>
 #include <GLUT/glut.h>
 #include <stdio.h>
-
-
-#endif /* LabAssignment1_h */
-
-typedef struct vec4
-{
-    GLfloat x;
-    GLfloat y;
-    GLfloat z;
-    GLfloat w;
-} vec4;
-
-typedef struct mat4
-{
-    vec4 v0;
-    vec4 v1;
-    vec4 v2;
-    vec4 v3;
-    
-} mat4;
+#include "types.h"
+#endif /* vecMatOps_h */
 
 void defineVector(GLfloat, GLfloat, GLfloat, GLfloat w, vec4*);
 
@@ -75,4 +57,7 @@ void inverseMatrix(mat4* m, mat4* res);
 void multiplyMatrices(mat4 *m1, mat4 *m2, mat4 *res);
 
 void multMatrixVector(mat4 *m, vec4 *v, vec4 *res);
+
+void getIdentityMatrix(mat4 *id);
+
 
