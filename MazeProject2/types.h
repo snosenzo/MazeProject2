@@ -34,7 +34,7 @@ typedef struct obj {
     vec4 *vertices;
     vec4 *colors;
     int num_verts;
-    int buffer_start_loc;
+    size_t buffer_start_loc;
     mat4 translation;
     mat4 rotation;
 } obj;

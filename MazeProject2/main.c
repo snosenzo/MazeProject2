@@ -11,16 +11,19 @@
 #include <math.h>
 #include <time.h>
 #include <unistd.h>
+#include "genMaze.h"
 #include "initShader.h"
-#include "transformFuncs.h"
+#include "viewFuncs.h"
 #include "shapeVecs.h"
+
 
 #define BUFFER_OFFSET( offset )   ((GLvoid*) (offset))
 
 mat4 identity;
 vec4* colors;
-vec4 total_vertices[1000000];
-obj objs[4];
+vec4 total_vertices[20000];
+obj objs[300];
+int numObjs = 0;
 int screenHeight = 512;
 int screenWidth = 512;
 int bufferCounter = 0;
@@ -28,25 +31,103 @@ int num_vertices;
 GLuint translate_loc;
 GLuint scale_loc;
 GLuint rotation_loc;
+GLuint mvm_loc;
+GLuint proj_mat_loc;
 float thetaX, thetaY, thetaZ;
+mat4 mvm;
+
+mat4 proj_mat;
+float p_near = .3;
+float p_far = 3;
+float p_left = .3;
+float p_right = .3;
+float p_top = .3;
+float p_bot = .3;
+
+int mazeSize = 8;
+float cell_size = .1f;
+
+cell *cellz;
+
 
 void initObjs() {
     vec4 v0, v1, v2, v3;
-    for(int i = 0; i < 4; i++ ) {
-        objs[i].vertices = &cubeVertices;
+    int i, j;
+    i = 0;
+    j = 0;
+    for(i = 0; i < 4; i++ ) {
+//        objs[i].vertices = malloc(sizeof(vec4) * 24);
         objs[i].num_verts = 24;
+        for(j = 0; j < objs[i].num_verts; j++) {
+            objs[i].vertices[j].x = cubeVertices[j].x;
+            objs[i].vertices[j].y = cubeVertices[j].y;
+            objs[i].vertices[j].z = cubeVertices[j].z;
+            objs[i].vertices[j].w = cubeVertices[j].w;
+        }
         num_vertices += 24;
+        getTranslationMatrix(0, 0, 0, &objs[i].translation);
         objs[i].rotation = identity;
     }
+}
+
+void rectObj(float xScale, float yScale, float zScale, float x, float y, float z, obj *in) {
     
-    getTranslationMatrix(-.5, .5, 0, &(objs[0].translation));
-    getTranslationMatrix(.5, .5, 0, &(objs[1].translation));
-    getTranslationMatrix(-.5, -.5, 0, &(objs[2].translation));
-    getTranslationMatrix(.5, -.5, 0, &(objs[3].translation));
+    in->vertices = (vec4 *)malloc(sizeof(vec4) * 24);
+    in->num_verts = 24;
+    for(int j = 0; j < in->num_verts; j++) {
+        in->vertices[j].x = cubeVertices[j].x * xScale * 2;
+        in->vertices[j].y = cubeVertices[j].y * yScale * 2;
+        in->vertices[j].z = cubeVertices[j].z * zScale * 2;
+        in->vertices[j].w = cubeVertices[j].w;
+    }
+    num_vertices += 24;
+    getTranslationMatrix(x, y, z, &in->translation);
+    in->rotation = identity;
+}
+
+void initMazeObjs() {
+    
+    int row, col;
+    float mazeCenterX = (mazeSize/2)*cell_size;
+    float mazeCenterY = (mazeSize/2)*cell_size;
+    
+    cell (*cells2D)[mazeSize] = (cell (*)[mazeSize]) cellz;
+    
+    // Set surrounding walls
+    for(col = 0; col < mazeSize; col++) {
+        for (row = 0; row < mazeSize; row++) {
+            vec4 cell_loc;
+            defineVector(-1*mazeCenterX + col*cell_size, mazeCenterY + (-1)*row*cell_size, 0, 1, &cell_loc);
+            
+            if(cells2D[row][col].west == 1) {
+                rectObj(cell_size/10, cell_size, 1, cell_loc.x-(cell_size/2.0f), cell_loc.y, cell_loc.z, &(objs[numObjs]));
+                numObjs++;
+            }
+            
+            if(col == mazeSize - 1) {
+                if(cells2D[row][col].east == 1) {
+                    rectObj(cell_size/10, cell_size, 1, cell_loc.x+(cell_size/2.0f), cell_loc.y, cell_loc.z, &(objs[numObjs]));
+                    numObjs++;
+                }
+            }
+            
+            if(cells2D[row][col].north == 1) {
+                rectObj(cell_size, cell_size/10, 1, cell_loc.x, cell_loc.y+(cell_size/2.0f), cell_loc.z, &(objs[numObjs]));
+                numObjs++;
+            }
+            
+            if(row == mazeSize - 1) {
+                if(cells2D[row][col].south == 1) {
+                    rectObj(cell_size, cell_size/10, 1, cell_loc.x, cell_loc.y-(cell_size/2.0f), cell_loc.z, &(objs[numObjs]));
+                    numObjs++;
+                }
+            }
+        }
+    }
 }
 
 void initColors(int num, int numPoints) {
-    colors = malloc(sizeof(vec4) * num);
+    colors = (vec4 *) malloc(sizeof(vec4) * num);
     for(int i = 0; i < num/numPoints; i++) {
         float x, y, z;
         x = (float)rand()/(float)(RAND_MAX);
@@ -61,13 +142,13 @@ void initColors(int num, int numPoints) {
     }
 }
 
-void loadObjectOnBuffer(obj o, int offset){
+void loadObjectOnBuffer(obj *o, int offset){
     //    glBufferSubData(GL_ARRAY_BUFFER, offset, o.num_verts*sizeof(vec4), o.vertices);
-    for(int i = 0; i < o.num_verts; i++ ) {
-        total_vertices[i+offset] = o.vertices[i];
+    for(int i = 0; i < o->num_verts; i++ ) {
+        total_vertices[i+offset] = o->vertices[i];
     }
-    bufferCounter+=sizeof(vec4) * o.num_verts;
-    o.buffer_start_loc = offset;
+    bufferCounter+=sizeof(vec4) * o->num_verts;
+    o->buffer_start_loc = offset;
 }
 
 void init(void)
@@ -75,8 +156,11 @@ void init(void)
     thetaX = 0;
     thetaY = 0;
     thetaZ = 0;
-    initObjs();
+    
+//    initObjs();
+    initMazeObjs();
     initColors(num_vertices, 1);
+    
     GLuint program = initShader("vshader.glsl", "fshader.glsl");
     glUseProgram(program);
     GLuint vao;
@@ -87,8 +171,8 @@ void init(void)
     glBindBuffer(GL_ARRAY_BUFFER, buffer);
     glBufferData(GL_ARRAY_BUFFER, sizeof(vec4)*num_vertices*2, NULL, GL_STATIC_DRAW);
     
-    for(int i = 0; i < 4; i++ ){
-        loadObjectOnBuffer(objs[i], i*sizeof(vec4)*objs[i].num_verts);
+    for(int i = 0; i < numObjs; i++ ){
+        loadObjectOnBuffer(&(objs[i]), i*objs[i].num_verts);
     }
     glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(vec4) * num_vertices, total_vertices);
     glBufferSubData(GL_ARRAY_BUFFER, bufferCounter, sizeof(vec4) * num_vertices, colors);
@@ -103,6 +187,8 @@ void init(void)
     translate_loc = glGetUniformLocation(program, "translate");
     scale_loc = glGetUniformLocation(program, "scale");
     rotation_loc = glGetUniformLocation(program, "rotation");
+    mvm_loc = glGetUniformLocation(program, "mvm");
+    proj_mat_loc = glGetUniformLocation(program, "proj_mat");
     
     glEnable(GL_DEPTH_TEST);
     glClearColor(0.0, 0.0, 0.0, 1.0);
@@ -118,20 +204,25 @@ void display(void) {
     float scaleFactor = .5;
     scalarMultMatrix(&identity, scaleFactor, &temp0);
     glUniformMatrix4fv(scale_loc, 1, GL_TRUE, &temp0);
-    for(int i = 0; i < 4; i++) {
-        if(i == 0) {
-            getXRotationMatrixTheta(thetaX, &temp1);
-            glUniformMatrix4fv(rotation_loc, 1, GL_TRUE, &temp1);
-        } else if(i == 1) {
-            getYRotationMatrixTheta(thetaX, &temp1);
-            glUniformMatrix4fv(rotation_loc, 1, GL_TRUE, &temp1);
-        } else if(i == 2) {
-            getZRotationMatrix(thetaX, &temp1);
-            glUniformMatrix4fv(rotation_loc, 1, GL_TRUE, &temp1);
-        } else if(i == 3) {
-            getXRotationMatrixTheta(thetaX*2, &temp1);
-            glUniformMatrix4fv(rotation_loc, 1, GL_TRUE, &temp1);
-        }
+    glUniformMatrix4fv(mvm_loc, 1, GL_TRUE, &mvm);
+    glUniformMatrix4fv(proj_mat_loc, 1, GL_TRUE, &proj_mat);
+
+    for(int i = 0; i < numObjs; i++) {
+//        if(i == 0) {
+//            getXRotationMatrixTheta(thetaX, &temp1);
+//            glUniformMatrix4fv(rotation_loc, 1, GL_TRUE, &temp1);
+//        } else if(i == 1) {
+//            getYRotationMatrixTheta(thetaX, &temp1);
+//            glUniformMatrix4fv(rotation_loc, 1, GL_TRUE, &temp1);
+//        } else if(i == 2) {
+//            getZRotationMatrix(thetaX, &temp1);
+//            glUniformMatrix4fv(rotation_loc, 1, GL_TRUE, &temp1);
+//        } else if(i == 3) {
+//            getXRotationMatrixTheta(thetaX*2, &temp1);
+//            glUniformMatrix4fv(rotation_loc, 1, GL_TRUE, &temp1);
+//        } else {
+        glUniformMatrix4fv(rotation_loc, 1, GL_TRUE, &identity);
+//        }
         glUniformMatrix4fv(translate_loc, 1, GL_TRUE, &objs[i].translation);
         glDrawArrays(GL_QUADS, objs[i].buffer_start_loc, objs[i].num_verts);
     }
@@ -141,9 +232,42 @@ void display(void) {
 
 void keyboard(unsigned char key, int mousex, int mousey)
 {
-    if(key == 'q')
-    exit(0);
+    if(key == 'u') { //
+        p_near+=.02;
+        frustum(p_left, p_right, p_bot, p_top, p_near, p_far, &proj_mat);
+    }
+    if(key == 'j') {
+        p_near-=.02;
+        frustum(p_left, p_right, p_bot, p_top, p_near, p_far, &proj_mat);
+    }
+    if(key == 'i') {
+        p_far+=.02;
+        frustum(p_left, p_right, p_bot, p_top, p_near, p_far, &proj_mat);
+    }
+    if(key == 'k') {
+        p_far-=.02;
+        frustum(p_left, p_right, p_bot, p_top, p_near, p_far, &proj_mat);
+    }
+    if(key == 't') {
+        p_right+=.02;
+        frustum(p_left, p_right, p_bot, p_top, p_near, p_far, &proj_mat);
+    }
+    if(key == 'y') {
+        p_right-=.02;
+        frustum(p_left, p_right, p_bot, p_top, p_near, p_far, &proj_mat);
+    }
+    if(key == 'o') {
+        p_top+=.02;
+        frustum(p_left, p_right, p_bot, p_top, p_near, p_far, &proj_mat);
+    }
+    if(key == 'p') {
+        p_top-=.02;
+        frustum(p_left, p_right, p_bot, p_top, p_near, p_far, &proj_mat);
+    }
     
+    printf("left: %f.2, right: %f.2, bot: %f.2, top: %f.2, near: %f.2, far: %f.2\n", p_left, p_right, p_bot, p_top, p_near, p_far);
+    if(key == 'q')
+        exit(0);
     glutPostRedisplay();
 }
 
@@ -164,14 +288,24 @@ void idle() {
 
 
 int main(int argc, const char * argv[]) {
+    
+    
     getIdentityMatrix(&identity);
+    multiplyMatrices(&identity, &identity, &mvm);
+    multiplyMatrices(&identity, &identity, &proj_mat);
     srand(time(NULL));
+    
     
     glutInit(&argc, argv);
     glutInitDisplayMode(GLUT_RGBA | GLUT_DOUBLE | GLUT_DEPTH);
     glutInitWindowSize(512, 512);
     glutInitWindowPosition(100,100);
-    glutCreateWindow("Lab3");
+    glutCreateWindow("Proj2");
+    cellz = (cell *) malloc (mazeSize * mazeSize * sizeof(cell));
+    gen_maze(8, 8, cellz);
+    
+    print_maze(mazeSize, mazeSize, cellz);
+    
     init();
     glutDisplayFunc(display);
     glutKeyboardFunc(keyboard);
