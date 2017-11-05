@@ -187,23 +187,23 @@ GLfloat absoluteValue(GLfloat a) {
 void inverseMatrix(mat4* m, mat4* res) {
     float det;
     mat4 cof, trans, minor;
-    printf("Matrix to be inversed: \n");
-    printMatrix(m);
+//    printf("Matrix to be inversed: \n");
+//    printMatrix(m);
     minorMatrix(m, &minor);
-    printf("minor matrix: \n");
-    printMatrix(&minor);
+//    printf("minor matrix: \n");
+//    printMatrix(&minor);
     det = absoluteValue(determinantMatrix(m, &minor));
-    printf("cofactor matrix: \n");
+//    printf("cofactor matrix: \n");
     cofactorMatrix(&minor, &cof);
-    printMatrix(&cof);
+//    printMatrix(&cof);
     transposeMatrix(&cof, &trans);
     printf("transpose matrix: \n");
-    printMatrix(&trans);
-    printf("det = %f\n\n\n", det);
+//    printMatrix(&trans);
+//    printf("det = %f\n\n\n", det);
     det = 1/det;
     scalarMultMatrix(&trans, det, res);
-    printf("Inverse result: \n");
-    printMatrix(res);
+//    printf("Inverse result: \n");
+//    printMatrix(res);
 }
 
 void multiplyMatrices(mat4 *m1, mat4 *m2, mat4 *res) {

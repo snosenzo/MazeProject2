@@ -37,12 +37,16 @@ float thetaX, thetaY, thetaZ;
 mat4 mvm;
 
 mat4 proj_mat;
-float p_near = .3;
-float p_far = 3;
+float p_near = 4.42;
+float p_far = -1.8;
 float p_left = .3;
 float p_right = .3;
 float p_top = .3;
 float p_bot = .3;
+
+vec4 _eye, _at, _up;
+float eyeTheta = 0;
+float camHeight = 0;
 
 int mazeSize = 8;
 float cell_size = .1f;
@@ -88,8 +92,13 @@ void rectObj(float xScale, float yScale, float zScale, float x, float y, float z
 void initMazeObjs() {
     
     int row, col;
-    float mazeCenterX = (mazeSize/2)*cell_size;
-    float mazeCenterY = (mazeSize/2)*cell_size;
+    float mazeCenterX = 0; //(mazeSize/2)*cell_size;
+    float mazeCenterZ = 0; //(mazeSize/2)*cell_size;
+    defineVector(0, -.1, 0, 1, &_eye);
+    defineVector(0, 0, 0, 1, &_at);
+    defineVector(0, 0, 1, 1, &_up);
+    look_at(_eye.x, _eye.y, _eye.z, _at.x, _at.y, _at.z, _up.x, _up.y, _up.z, &mvm);
+    
     
     cell (*cells2D)[mazeSize] = (cell (*)[mazeSize]) cellz;
     
@@ -97,28 +106,28 @@ void initMazeObjs() {
     for(col = 0; col < mazeSize; col++) {
         for (row = 0; row < mazeSize; row++) {
             vec4 cell_loc;
-            defineVector(-1*mazeCenterX + col*cell_size, mazeCenterY + (-1)*row*cell_size, 0, 1, &cell_loc);
+            defineVector(-1*mazeCenterX + col*cell_size, 0, (-1)*mazeCenterZ + row*cell_size, 0, &cell_loc);
             
             if(cells2D[row][col].west == 1) {
-                rectObj(cell_size/10, cell_size, 1, cell_loc.x-(cell_size/2.0f), cell_loc.y, cell_loc.z, &(objs[numObjs]));
+                rectObj(cell_size/10, cell_size, cell_size, cell_loc.x-(cell_size/2.0f), cell_loc.y, cell_loc.z, &(objs[numObjs]));
                 numObjs++;
             }
             
             if(col == mazeSize - 1) {
                 if(cells2D[row][col].east == 1) {
-                    rectObj(cell_size/10, cell_size, 1, cell_loc.x+(cell_size/2.0f), cell_loc.y, cell_loc.z, &(objs[numObjs]));
+                    rectObj(cell_size/10, cell_size, cell_size, cell_loc.x+(cell_size/2.0f), cell_loc.y, cell_loc.z, &(objs[numObjs]));
                     numObjs++;
                 }
             }
             
             if(cells2D[row][col].north == 1) {
-                rectObj(cell_size, cell_size/10, 1, cell_loc.x, cell_loc.y+(cell_size/2.0f), cell_loc.z, &(objs[numObjs]));
+                rectObj(cell_size, cell_size, cell_size/10, cell_loc.x, cell_loc.y, cell_loc.z-(cell_size/2.0f), &(objs[numObjs]));
                 numObjs++;
             }
             
             if(row == mazeSize - 1) {
                 if(cells2D[row][col].south == 1) {
-                    rectObj(cell_size, cell_size/10, 1, cell_loc.x, cell_loc.y-(cell_size/2.0f), cell_loc.z, &(objs[numObjs]));
+                    rectObj(cell_size, cell_size, cell_size/10, cell_loc.x, cell_loc.y, cell_loc.z+(cell_size/2.0f), &(objs[numObjs]));
                     numObjs++;
                 }
             }
@@ -159,7 +168,7 @@ void init(void)
     
 //    initObjs();
     initMazeObjs();
-    initColors(num_vertices, 1);
+    initColors(num_vertices, 4);
     
     GLuint program = initShader("vshader.glsl", "fshader.glsl");
     glUseProgram(program);
@@ -230,42 +239,71 @@ void display(void) {
     
 }
 
-void keyboard(unsigned char key, int mousex, int mousey)
-{
-    if(key == 'u') { //
-        p_near+=.02;
-        frustum(p_left, p_right, p_bot, p_top, p_near, p_far, &proj_mat);
-    }
-    if(key == 'j') {
-        p_near-=.02;
-        frustum(p_left, p_right, p_bot, p_top, p_near, p_far, &proj_mat);
-    }
+void keyboard(unsigned char key, int mousex, int mousey) {
     if(key == 'i') {
-        p_far+=.02;
-        frustum(p_left, p_right, p_bot, p_top, p_near, p_far, &proj_mat);
+        p_near+=.02;
+//        frustum(p_left, p_right, p_bot, p_top, p_near, p_far, &proj_mat);
+        perspective(p_right, p_top, p_near, p_far, &proj_mat);
     }
     if(key == 'k') {
-        p_far-=.02;
-        frustum(p_left, p_right, p_bot, p_top, p_near, p_far, &proj_mat);
-    }
-    if(key == 't') {
-        p_right+=.02;
-        frustum(p_left, p_right, p_bot, p_top, p_near, p_far, &proj_mat);
-    }
-    if(key == 'y') {
-        p_right-=.02;
-        frustum(p_left, p_right, p_bot, p_top, p_near, p_far, &proj_mat);
+        p_near-=.02;
+//        frustum(p_left, p_right, p_bot, p_top, p_near, p_far, &proj_mat);
+        perspective(p_right, p_top, p_near, p_far, &proj_mat);
     }
     if(key == 'o') {
-        p_top+=.02;
-        frustum(p_left, p_right, p_bot, p_top, p_near, p_far, &proj_mat);
+        p_far+=.02;
+//        frustum(p_left, p_right, p_bot, p_top, p_near, p_far, &proj_mat);
+        perspective(p_right, p_top, p_near, p_far, &proj_mat);
+    }
+    if(key == 'l') {
+        p_far-=.02;
+//        frustum(p_left, p_right, p_bot, p_top, p_near, p_far, &proj_mat);
+        perspective(p_right, p_top, p_near, p_far, &proj_mat);
     }
     if(key == 'p') {
-        p_top-=.02;
-        frustum(p_left, p_right, p_bot, p_top, p_near, p_far, &proj_mat);
+        p_right+=.02;
+//        frustum(p_left, p_right, p_bot, p_top, p_near, p_far, &proj_mat);
+        perspective(p_right, p_top, p_near, p_far, &proj_mat);
+    }
+    if(key == ';') {
+        p_right-=.02;
+//        frustum(p_left, p_right, p_bot, p_top, p_near, p_far, &proj_mat);
+        perspective(p_right, p_top, p_near, p_far, &proj_mat);
+    }
+    if(key == 'r') {
+        p_left = -1.0;
+        p_right = 1.0;
+        p_bot = -1.0;
+        p_top = 1.0;
+        p_near = 1.0;
+        p_far = -1.0;
+//        frustum(p_left, p_right, p_bot, p_top, p_near, p_far, &proj_mat);
+        perspective(p_right, p_top, p_near, p_far, &proj_mat);
+    }
+    printf("left: %f, right: %f, bot: %f, top: %f, near: %f, far: %f\n", p_left, p_right, p_bot, p_top, p_near, p_far);
+    
+    
+    // MVM keys
+    if(key =='d') {
+        _at.x+=.01;
+        look_at(_eye.x, _eye.y, _eye.z, _at.x, _at.y, _at.z, _up.x, _up.y, _up.z, &mvm);
+    }
+    if(key =='a') {
+        _at.x-=.01;
+//        look_at_theta(eyeTheta, camHeight, &mvm);
+        look_at(_eye.x, _eye.y, _eye.z, _at.x, _at.y, _at.z, _up.x, _up.y, _up.z, &mvm);
+    }
+    if(key =='w') {
+        _at.z+=.01;
+//        look_at_theta(eyeTheta, camHeight, &mvm);
+        look_at(_eye.x, _eye.y, _eye.z, _at.x, _at.y, _at.z, _up.x, _up.y, _up.z, &mvm);
+    }
+    if(key =='s') {
+        _at.z-=.01;
+//        look_at_theta(eyeTheta, camHeight, &mvm);
+        look_at(_eye.x, _eye.y, _eye.z, _at.x, _at.y, _at.z, _up.x, _up.y, _up.z, &mvm);
     }
     
-    printf("left: %f.2, right: %f.2, bot: %f.2, top: %f.2, near: %f.2, far: %f.2\n", p_left, p_right, p_bot, p_top, p_near, p_far);
     if(key == 'q')
         exit(0);
     glutPostRedisplay();
@@ -280,9 +318,7 @@ void dragFunction(int x, int y) {
 }
 
 void idle() {
-    thetaX+=.01;
-    thetaY+=.01;
-    thetaZ+=.01;
+
     glutPostRedisplay();
 }
 

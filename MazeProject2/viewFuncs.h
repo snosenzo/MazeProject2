@@ -16,3 +16,6 @@
 
 void look_at(float eyex, float eyey, float eyez, float atx, float aty, float atz, float upx, float upy, float upz, mat4*);
 void frustum(float left, float right, float bottom, float top, float near, float far, mat4*);
+void look_at_theta(float theta, float y, mat4 *res);
+void perspective(float right, float top, float near, float far, mat4 *res);
+
